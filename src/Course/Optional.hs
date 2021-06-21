@@ -27,8 +27,10 @@ mapOptional ::
   (a -> b)
   -> Optional a
   -> Optional b
-mapOptional =
-  error "todo: Course.Optional#mapOptional"
+-- mapOptional _ Empty = Empty
+-- mapOptional f (Full a) = Full $ f a
+mapOptional f o = case o of Empty -> Empty
+                            Full x -> Full $ f x
 
 -- | Bind the given function on the possible value.
 --
@@ -44,8 +46,8 @@ bindOptional ::
   (a -> Optional b)
   -> Optional a
   -> Optional b
-bindOptional =
-  error "todo: Course.Optional#bindOptional"
+bindOptional f o = case o of Empty -> Empty
+                             Full a -> f a
 
 -- | Return the possible value if it exists; otherwise, the second argument.
 --
@@ -58,8 +60,8 @@ bindOptional =
   Optional a
   -> a
   -> a
-(??) =
-  error "todo: Course.Optional#(??)"
+(??) Empty x = x
+(??) (Full x) _ = x
 
 -- | Try the first optional for a value. If it has a value, use it; otherwise,
 -- use the second value.
@@ -75,12 +77,12 @@ bindOptional =
 --
 -- >>> Empty <+> Empty
 -- Empty
-(<+>) ::
+(<+>) :: --this is NOT <*> from applicative functors.
   Optional a
   -> Optional a
   -> Optional a
-(<+>) =
-  error "todo: Course.Optional#(<+>)"  
+(<+>) o1@(Full _) _ = o1
+(<+>) Empty o = o
 
 applyOptional :: Optional (a -> b) -> Optional a -> Optional b
 applyOptional f a = bindOptional (\f' -> mapOptional f' a) f
@@ -94,11 +96,13 @@ contains a (Full z) = a == z
 
 instance P.Functor Optional where
   fmap =
-    M.liftM
+    M.liftM -- like a default fmap, from type sig
+    -- M.liftM :: Monad m => (a -> b) -> m a -> m b
 
 instance A.Applicative Optional where
-  (<*>) =
-    M.ap
+  (<*>) = 
+    M.ap -- like a default <*>, from type sig
+    -- M.ap:: Monad m => m (a -> b) -> m a -> m b
   pure =
     Full
 
