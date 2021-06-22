@@ -38,8 +38,7 @@ exec ::
   State s a
   -> s
   -> s
-exec =
-  error "todo: Course.State#exec"
+exec state seed = snd $ runState state seed
 
 -- | Run the `State` seeded with `s` and retrieve the resulting value.
 --
@@ -48,8 +47,7 @@ eval ::
   State s a
   -> s
   -> a
-eval =
-  error "todo: Course.State#eval"
+eval state seed = fst $ runState state seed
 
 -- | A `State` where the state also distributes into the produced value.
 --
@@ -57,8 +55,7 @@ eval =
 -- (0,0)
 get ::
   State s s
-get =
-  error "todo: Course.State#get"
+get = State (\s -> (s,s))
 
 -- | A `State` where the resulting state is seeded with the given value.
 --
@@ -67,8 +64,7 @@ get =
 put ::
   s
   -> State s ()
-put =
-  error "todo: Course.State#put"
+put seed = State (\_ -> ((), seed))
 
 -- | Implement the `Functor` instance for `State s`.
 --
@@ -79,8 +75,7 @@ instance Functor (State s) where
     (a -> b)
     -> State s a
     -> State s b
-  (<$>) =
-    error "todo: Course.State#(<$>)"
+  (<$>) f state = State (\seed -> case runState state seed of (a,b) -> (f a, b))
 
 -- | Implement the `Applicative` instance for `State s`.
 --
@@ -97,14 +92,20 @@ instance Applicative (State s) where
   pure ::
     a
     -> State s a
-  pure =
-    error "todo: Course.State pure#instance (State s)"
+  pure val = State (\seed -> (val,seed))
   (<*>) ::
     State s (a -> b)
     -> State s a
     -> State s b 
-  (<*>) =
-    error "todo: Course.State (<*>)#instance (State s)"
+  (<*>) s1 s2 = State (\seed -> let (f,s) = runState s1 seed; 
+                                    (a,s') = runState s2 s in  
+                                    (f a, s'))
+
+  --State (\seed -> (fst $ runState s1 seed) (fst $ runState s2 seed))
+  -- how are we supposed to combine the resulting states? i have no guarantee on what the type
+  -- of s will be. in their given example, the states ["apple"] and ["banana"] combine up
+  -- ah i get it, i probably take the state after the first expression, and use that for
+  -- the second expression. that would be the most intuitive way of doing it.
 
 -- | Implement the `Bind` instance for `State s`.
 --
@@ -118,8 +119,28 @@ instance Monad (State s) where
     (a -> State s b)
     -> State s a
     -> State s b
-  (=<<) =
-    error "todo: Course.State (=<<)#instance (State s)"
+  (=<<) f s = State (\seed -> let (a,s') = runState s seed in 
+                                  (runState (f a)) s')
+{-
+f $ exec s seed produces State s b instead of (b,s) this is tricky.
+State s b, means that State contains a function that has type signature :: s -> (b,s)
+
+the problem is that the unwrapping has to be done in the "future" so to speak
+first i get a seed, i use that seed to produce (a,s) then i want to use this a 
+as a value to feed into f to get State s b
+
+one point of view is that i try to produce a function that gives me a (b,s) but that
+seems to be hard. So i instead thought of just producing State s b straight, but
+i cant do that without the seed value to let me run State s a, thats my issue. 
+even if i get a seed value to run State s a, what am i then supposed to do to
+"run" and get (b,s)?
+
+the way i implemented this is as follows; given a seed, i run the initial State s a,
+to give me a (a, s'), then i use a to create a State s b, into which i feed s' as the 
+new seed to finally get (b,s'') as the final result. 
+-}
+
+
 
 -- | Find the first element in a `List` that satisfies a given predicate.
 -- It is possible that no element is found, hence an `Optional` result.
@@ -140,8 +161,9 @@ findM ::
   (a -> f Bool)
   -> List a
   -> f (Optional a)
-findM =
-  error "todo: Course.State#findM"
+findM _ Nil = return Empty
+findM pr (t :. xs) = (pr t) >>= (\b -> case b of True -> return (Full t)
+                                                 False -> findM pr xs)
 
 -- | Find the first element in a `List` that repeats.
 -- It is possible that no element repeats, hence an `Optional` result.

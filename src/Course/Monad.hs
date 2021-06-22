@@ -18,6 +18,23 @@ import qualified Prelude as P((=<<))
 --
 -- * The law of associativity
 --   `∀f g x. g =<< (f =<< x) ≅ ((g =<<) . f) =<< x`
+
+{-
+This says g bind (f bind x) isomorphic ((g bind) . f) bind x
+
+On the left, g is a monadic function, f is a monadic function, and x
+is a value. f =<< x produces a monadic value, that is then
+fed into g.
+
+On the right, ((g bind) . f) is the function fed into =<< it takes in
+the value x, and applies f x, before applying (g bind) to f x. Makes sense.
+
+The main issue with the law is that its not clear when at all this would fail 
+to hold.
+
+-}
+
+
 class Applicative f => Monad f where
   -- Pronounced, bind.
   (=<<) ::
@@ -36,8 +53,7 @@ instance Monad ExactlyOne where
     (a -> ExactlyOne b)
     -> ExactlyOne a
     -> ExactlyOne b
-  (=<<) =
-    error "todo: Course.Monad (=<<)#instance ExactlyOne"
+  (=<<) f (ExactlyOne x) = f x
 
 -- | Binds a function on a List.
 --
@@ -48,8 +64,7 @@ instance Monad List where
     (a -> List b)
     -> List a
     -> List b
-  (=<<) =
-    error "todo: Course.Monad (=<<)#instance List"
+  (=<<) f xs = flatten $ map f xs
 
 -- | Binds a function on an Optional.
 --
@@ -60,8 +75,8 @@ instance Monad Optional where
     (a -> Optional b)
     -> Optional a
     -> Optional b
-  (=<<) =
-    error "todo: Course.Monad (=<<)#instance Optional"
+  (=<<) _ Empty = Empty
+  (=<<) f (Full x) = f x
 
 -- | Binds a function on the reader ((->) t).
 --
@@ -69,11 +84,12 @@ instance Monad Optional where
 -- 119
 instance Monad ((->) t) where
   (=<<) ::
-    (a -> ((->) t b))
-    -> ((->) t a)
-    -> ((->) t b)
-  (=<<) =
-    error "todo: Course.Monad (=<<)#instance ((->) t)"
+    (a -> ((->) t b)) -- a -> t -> b
+    -> ((->) t a)     -- t -> a
+    -> ((->) t b)     -- t -> b
+  (=<<) f g x = f (g x) x
+-- expected type is what HASKELL expects
+-- actual type is what i've provided
 
 -- | Witness that all things with (=<<) and (<$>) also have (<*>).
 --
@@ -111,8 +127,14 @@ instance Monad ((->) t) where
   f (a -> b)
   -> f a
   -> f b
-(<**>) =
-  error "todo: Course.Monad#(<**>)"
+(<**>) m a = (\f -> f <$> a) =<< m
+{-
+m is a monad, containing a function of type (a -> b)
+when i use =<< with m as the right argument, =<< "pulls out" (a -> b) 
+and binds it to f. so f now has type a -> b
+
+a above is a monad of type a, so now i can fmap f over it to get a monad of type b. 
+-}
 
 infixl 4 <**>
 
@@ -133,12 +155,14 @@ join ::
   Monad f =>
   f (f a)
   -> f a
-join =
-  error "todo: Course.Monad#join"
+join m = id =<< m 
 
 -- | Implement a flipped version of @(=<<)@, however, use only
 -- @join@ and @(<$>)@.
 -- Pronounced, bind flipped.
+
+-- this is wrong. Bind as recognised by haskell is >>=, =<< is the flipped version.
+
 --
 -- >>> ((+10) >>= (*)) 7
 -- 119
@@ -147,8 +171,7 @@ join =
   f a
   -> (a -> f b)
   -> f b
-(>>=) =
-  error "todo: Course.Monad#(>>=)"
+(>>=) m f = join $ f <$> m
 
 infixl 1 >>=
 
@@ -163,8 +186,7 @@ infixl 1 >>=
   -> (a -> f b)
   -> a
   -> f c
-(<=<) =
-  error "todo: Course.Monad#(<=<)"
+(<=<) f g a = f =<< (g a)
 
 infixr 1 <=<
 
