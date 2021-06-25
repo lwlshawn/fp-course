@@ -156,6 +156,7 @@ new seed to finally get (b,s'') as the final result.
 --
 -- >>> let p x = (\s -> (const $ pure (x == 'i')) =<< put (1+s)) =<< get in runState (findM p $ listh ['a'..'h']) 0
 -- (Empty,8)
+
 findM ::
   Monad f =>
   (a -> f Bool)
@@ -165,6 +166,7 @@ findM _ Nil = return Empty
 findM pr (t :. xs) = (pr t) >>= (\b -> case b of True -> return (Full t)
                                                  False -> findM pr xs)
 
+
 -- | Find the first element in a `List` that repeats.
 -- It is possible that no element repeats, hence an `Optional` result.
 --
@@ -172,12 +174,72 @@ findM pr (t :. xs) = (pr t) >>= (\b -> case b of True -> return (Full t)
 --
 -- prop> \xs -> case firstRepeat xs of Empty -> let xs' = hlist xs in nub xs' == xs'; Full x -> length (filter (== x) xs) > 1
 -- prop> \xs -> case firstRepeat xs of Empty -> True; Full x -> let (l, (rx :. rs)) = span (/= x) xs in let (l2, r2) = span (/= x) rs in let l3 = hlist (l ++ (rx :. Nil) ++ l2) in nub l3 == l3
+
+pred' :: Ord a => a -> State (S.Set a) Bool
+pred' ele = State (\set -> (S.member ele set, S.insert ele set))
+
 firstRepeat ::
   Ord a =>
   List a
   -> Optional a
-firstRepeat =
-  error "todo: Course.State#firstRepeat"
+firstRepeat ls = fst (runState (findM pred' ls) S.empty)
+
+
+{-
+time to trace types. findM :: (a -> f Bool) -> List a -> f (Optional a)
+the "state" we want to track is the items seen so far, kept inside a set, so i can't imagine
+f not being State S.Set. Lets substitute that in first
+
+findM :: (a -> State S.Set Bool) -> List a -> State S.Set (Optional a)
+how does findM work? The key line is as follows:
+
+findM pr (t :. xs) = (pr t) >>= (\b -> case b of True -> return (Full t)
+                                                 False -> findM pr xs)...
+
+i think i have the intuition, and it let me code something that typechecks.
+
+I want to try and reason through what happens here.
+
+the pred' I defined above takes an element
+and returns true if its in the "previous" set, false otherwise and adds
+the current element to the set. handling of state is done by findM
+that "threads" the state through using >>= for us?
+
+
+what actually happens when we call (findM pred' (1 :. 2 :. 1 :. Nil))? lets trace
+
+- findM _ Nil fails, so we go to next pattern
+- findM pr (1 :. (2 :. 1 :. Nil)) = (pr 1) >>= (\b -> case b of True -> return (Full t)
+                                                                False -> findM pr xs))
+
+pr = pred', so (pred' 1) = State (\set -> (S.member 1 set, S.insert 1 set))
+at this point i think haskell has to leave it and can't do anything further? Since without
+providing an explicit starting set, its impossible to evaluate case b of ...
+
+-- COME BACK TO THIS
+-}
+
+-- some basic practice with the State monad i did to help complete the task above
+--LEVEL 1: Add things to a set
+push' :: Ord a => a -> State (S.Set a) ()
+push' ele = State $ \set -> ((), S.insert ele set)
+
+checkandpush :: Ord a => a -> State (S.Set a) Bool
+checkandpush ele = State $ \set -> (S.member ele set, S.insert ele set)
+
+--LEVEL 2: Add three ints to a set using State
+-- addthree :: State (S.Set Int) ()
+-- addthree = do
+--   push' 2
+--   push' 3
+--   push' 4
+
+--LEVEL 3: Add a list of Ints to a set using State
+addList :: List Int -> State (S.Set Int) ()
+addList (h :. t) = do
+  push' h >> addList t
+addList Nil = return ()
+
 
 -- | Remove all duplicate elements in a `List`.
 -- /Tip:/ Use `filtering` and `State` with a @Data.Set#Set@.
@@ -189,8 +251,24 @@ distinct ::
   Ord a =>
   List a
   -> List a
-distinct =
-  error "todo: Course.State#distinct"
+distinct ls = fst $ runState (filtering pred'' ls) S.empty
+
+pred'' :: Ord a => a -> State (S.Set a) Bool
+pred'' ele = State (\set -> (not $ S.member ele set, S.insert ele set))
+
+{-
+actually the simplest way is to just convert a list to a set, and convert back
+but i'll not do it that way since clearly they want you to work with State.
+
+filtering :: Applicative f => (a -> f Bool) -> List a -> f (List a)
+again, i can only assume that f has to be State (S.set a), so lets substitute
+
+filtering :: Applicative f => (a -> State (S.Set a) Bool) -> List a -> State (S.Set a) (List a)
+pred is the same as before, but you keep an element when the predicate is true, so
+you keep the element if it is NOT already a member of the set. If you've seen it before, discard it
+-}
+
+
 
 -- | A happy number is a positive integer, where the sum of the square of its digits eventually reaches 1 after repetition.
 -- In contrast, a sad number (not a happy number) is where the sum of the square of its digits never reaches 1
@@ -216,5 +294,34 @@ distinct =
 isHappy ::
   Integer
   -> Bool
-isHappy =
-  error "todo: Course.State#isHappy"
+isHappy = (contains 1) . firstRepeat . (produce sumSquareOfDigits)
+
+sumSquareOfDigits :: Integer -> Integer
+sumSquareOfDigits = toInteger . sum . map (\x -> x * x) . map (digitToInt) . listh . show
+
+-- find first element that repeats
+-- firstRepeat ::
+--   Ord a =>
+--   List a
+--   -> Optional a
+-- firstRepeat ls = fst (runState (findM pred' ls) S.empty)
+
+-- digitToInt :: Char -> Int
+-- contains :: Eq a => a -> Optional a -> Bool
+
+-- | Produce an infinite `List` that seeds with the given value at its head,
+-- then runs the given function for subsequent elements
+-- produce :: (a -> a) -> a -> List a
+
+
+-- | Flattens a combined structure to a single structure.
+-- join :: Monad f => f (f a) -> f a
+
+{-
+sumSquareOfDigits :: Int -> Int
+sumSquareOfDigits = sum . map (\x -> x * x) . map (digitToInt) . show
+
+given an integer, make an infinite list, where next element is computed using sumSquareOfDigits
+then find the firstRepeat element, and check if its 1
+
+-}

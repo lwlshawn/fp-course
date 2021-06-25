@@ -1,6 +1,6 @@
 package = course
-
-stack_yaml = STACK_YAML="stack.yaml"
+#the reason this fails on windows is literally just "stack.yaml" instead of stack.yaml ffs
+stack_yaml = STACK_YAML="stack.yaml" 
 stack = $(stack_yaml) stack
 
 build:
