@@ -38,21 +38,23 @@ instance Traversable List where
     -> f (List b)
   traverse f =
     foldRight (\a b -> (:.) <$> f a <*> b) (pure Nil)
--- traverse :: (a -> f b) -> List a -> f (List b)
--- he defines it by taking in a function f' :: (a -> f b)
--- and then does foldRight on the incoming list, with a function
 
--- (\a b -> (:.) <$> f a <*> b) (pure Nil)
--- foldRight :: (a -> b -> b) -> b -> List a -> b
--- so here b is the 'accumulated value', he uses pure Nil which is 
--- like putting an empty list inside the functor, makes sense.
+{-
+traverse :: (a -> f b) -> List a -> f (List b)
+he defines it by taking in a function f' :: (a -> f b)
+and then does foldRight on the incoming list, with a function
 
--- now the function:
--- \a b -> (:.) <$> f' a <*> b 
--- given an incoming element a, first i apply the function f' to it.
--- this gives me (f b), and the accumulated value is (f List b)
--- so i simply lift concatenation into the applicative context. Makes sense.
+(\a b -> (:.) <$> f a <*> b) (pure Nil)
+foldRight :: (a -> b -> b) -> b -> List a -> b
+so here b is the 'accumulated value', he uses pure Nil as "base value"
+which is like putting an empty list inside the functor, makes sense.
 
+now the function:
+\a b -> (:.) <$> f' a <*> b 
+given an incoming element a, first i apply the function f' to it.
+this gives me (f b), and the accumulated value is (f List b)
+so i simply lift concatenation into the applicative context. Makes sense.
+-}
 
 instance Traversable ExactlyOne where
   traverse ::

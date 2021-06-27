@@ -20,3 +20,12 @@ data Person =
     Bool  -- smoker
     Chars -- phone number
   deriving (Eq, Show)
+
+
+-- data ParseResult a =
+--     UnexpectedEof
+--   | ExpectedEof Input
+--   | UnexpectedChar Char
+--   | UnexpectedString Chars
+--   | Result Input a
+--   deriving Eq
