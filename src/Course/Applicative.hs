@@ -269,7 +269,29 @@ lift1 f a = lift0 f <*> a
   -> f b
   -> f b
 (*>) x y = const id <$> x <*> y
---(*>) x y = flip (lift2 const) x y -- NOT the same thing. wtf
+
+{-
+So why doesn't the following work?
+(*>) x y = flip (lift2 const) x y 
+
+lift2 :: (a -> b -> c) -> f a -> f b -> f c
+flip -- reverses argument order, so:
+flip (lift2 const) :: f b -> f a -> f c
+
+Substituting:
+lift2 f a b = f <$> a <*> b
+(lift2 const) a b = const <$> a <*> b
+flip (lift2 const) a b = const <$> b <*> a
+
+right. The issue with using flip like this is that
+we reverse the order of the effects. this causes the
+effect of b to happen, before the effect of a
+
+which is what causes the nondeterminism of left apply
+to reappear here with this wrong solution. Really subtle
+and interesting.
+-}
+
 
 -- | Apply, discarding the value of the second argument.
 -- Pronounced, left apply.

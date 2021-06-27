@@ -315,11 +315,11 @@ jsonObject = betweenSepbyComma '{' '}'
 -- that list space >> pure Nil doesn't fail on any inpuit. 
 
 
-test :: Parser (List Chars)
-test = betweenSepbyComma '{' '}' jsonString
+-- test :: Parser (List Chars)
+-- test = betweenSepbyComma '{' '}' jsonString
 
-test2 :: Parser (Chars, JsonValue)
-test2 = jsonString >>= (\k -> (charTok (':') >> jsonValue >>= (\v -> pure (k,v))))
+-- test2 :: Parser (Chars, JsonValue)
+-- test2 = jsonString >>= (\k -> (charTok (':') >> jsonValue >>= (\v -> pure (k,v))))
 
 -- | Parse a JSON value.
 --
