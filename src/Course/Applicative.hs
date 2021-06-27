@@ -121,8 +121,8 @@ instance Applicative ((->) t) where
     -> ((->) t a)
   pure a = \_ -> a
   (<*>) ::
-    ((->) t (a -> b)) -- t -> a -> b
-    -> ((->) t a) -- t -> a
+    ((->) t (a -> b)) -- t -> a -> b (f)
+    -> ((->) t a) -- t -> a (g)
     -> ((->) t b) -- t -> b
   (<*>) f g t = f t (g t)
 
@@ -378,6 +378,7 @@ filtering p xs = helper (map p xs) xs
 helper :: Applicative f => List (f Bool) -> List a -> f (List a)
 helper Nil Nil = pure Nil
 helper (fb :. fs) (a :. xs) = (++) <$> (myf <$> fb <*> (pure a)) <*> (helper fs xs)
+
 
 myf :: Bool -> a -> List a
 myf x y = case x of True -> y :. Nil
