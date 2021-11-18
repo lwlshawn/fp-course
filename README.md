@@ -1,3 +1,5 @@
+Solutions to the fp-course, details below.
+
 # Functional Programming Course
 
 ![Haskell logo](https://haskell-lang.org/static/img/logo.png?etag=rJR84DMh)
